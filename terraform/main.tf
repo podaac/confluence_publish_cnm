@@ -41,6 +41,10 @@ data "aws_iam_role" "exe_role" {
   name = "${var.prefix}-ecs-exe-task-role"
 }
 
+data "aws_s3_bucket" "aws_s3_bucket_sos" {
+  bucket = "${var.prefix}-sos"
+}
+
 # Local variables
 locals {
   account_id = data.aws_caller_identity.current.account_id

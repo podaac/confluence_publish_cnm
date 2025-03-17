@@ -1,5 +1,5 @@
 # CloudWatch Log Group
-resource "aws_cloudwatch_log_group" "generate_cw_log_group_publish_cnm" {
+resource "aws_cloudwatch_log_group" "cw_log_group_publish_cnm" {
   name              = "/aws/batch/job/${var.prefix}-publish-cnm/"
   retention_in_days = 0
 }
@@ -17,10 +17,9 @@ resource "aws_batch_job_queue" "jq_publish_cnm" {
   name     = "${var.prefix}-publish-cnm"
   state    = "ENABLED"
   priority = 10
-  compute_environment_order {
-    order               = 1
-    compute_environment = data.aws_batch_compute_environment.ce_data.arn
-  }
+  compute_environments = [
+    data.aws_batch_compute_environment.ce_data.arn
+  ]
 }
 
 # Job Role
@@ -67,7 +66,7 @@ resource "aws_iam_policy" "batch_job_s3_policy" {
           "s3:ListBucketVersions"
         ],
         "Resource" : [
-          "${aws_s3_bucket.aws_s3_bucket_sos.arn}"
+          "${data.aws_s3_bucket.aws_s3_bucket_sos.arn}"
         ]
       },
       {
@@ -81,7 +80,7 @@ resource "aws_iam_policy" "batch_job_s3_policy" {
           "s3:PutObject"
         ],
         "Resource" : [
-          "${aws_s3_bucket.aws_s3_bucket_sos.arn}/*"
+          "${data.aws_s3_bucket.aws_s3_bucket_sos.arn}/*"
         ]
       }
     ]
@@ -149,7 +148,7 @@ resource "aws_batch_job_definition" "generate_batch_jd_publish_cnm" {
     "logConfiguration": {
       "logDriver" : "awslogs",
       "options": {
-        "awslogs-group" : "${data.aws_cloudwatch_log_group.cw_log_group.name}"
+        "awslogs-group" : "${aws_cloudwatch_log_group.cw_log_group_publish_cnm.name}"
       }
     },
     "environment": [
