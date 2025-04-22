@@ -6,7 +6,7 @@ resource "aws_cloudwatch_log_group" "cw_log_group_publish_cnm" {
 
 # SSM parameter
 resource "aws_ssm_parameter" "publish_cnm_sns_topic" {
-  name        = "podaac_cnm_topic_arn"
+  name        = "${var.prefix}-podaac-cnm-topic-arn"
   description = "Cumulus SNS topic for granule ingestion"
   type        = "SecureString"
   value       = var.sns_topic_arn

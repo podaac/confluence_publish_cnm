@@ -42,6 +42,8 @@ def main():
     logging.info("S3 bucket: %s", bucket)
     bucket_path = args.bucketpath
     logging.info("S3 bucket path to granules: %s", bucket_path)
+    prefix = args.prefix
+    logging.info("Venue prefix: %s", prefix)
 
     granules_dict = get_granules_dict(bucket, bucket_path)
     logging.info("Retrieved granules from S3.")
@@ -57,7 +59,7 @@ def main():
         message = create_message(granule_files)
         logging.info("Created CNM for priors/results granule.")
 
-        publish_cnm(message)
+        publish_cnm(message, prefix)
 
     end = datetime.datetime.now(datetime.timezone.utc)
     logging.info("Execution time: %s", end - start)
@@ -73,6 +75,10 @@ def create_args():
                             "--bucketpath",
                             type=str,
                             help="Full path to SoS granules in S3, e.g. unconstrained/0001")
+    arg_parser.add_argument("-r",
+                            "--prefix",
+                            type=str,
+                            help="Prefix for venue resources, e.g. svc-confluence-sit")
     return arg_parser
 
 def get_granules_dict(bucket, bucket_path):
@@ -185,9 +191,9 @@ def create_message(granule_files):
     }
     return message
 
-def publish_cnm(message):
+def publish_cnm(message, prefix):
     """Publish CNM message to SNS Topic."""
-    topic_arn = SSM.get_parameter(Name="podaac_cnm_topic_arn", WithDecryption=True)["Parameter"]["Value"]
+    topic_arn = SSM.get_parameter(Name=f"{prefix}-podaac-cnm-topic-arn", WithDecryption=True)["Parameter"]["Value"]
     SNS.publish(TopicArn=topic_arn, Message=json.dumps(message),
     )
     print(f"{message['identifier']} message published to SNS Topic: {topic_arn}")
