@@ -1,13 +1,12 @@
 variable "app_name" {
   type        = string
   description = "Application name"
-  default     = "generate"
+  default     = "confluence"
 }
 
 variable "app_version" {
   type        = string
   description = "The application version number"
-  default     = "1.0.0"
 }
 
 variable "aws_region" {
