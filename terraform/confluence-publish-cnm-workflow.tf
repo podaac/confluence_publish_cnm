@@ -166,8 +166,8 @@ resource "aws_batch_job_definition" "generate_batch_jd_publish_cnm" {
       }
     ],
     "resourceRequirements": [
-      {"type": "MEMORY", "value": "512"},
-      {"type": "VCPU", "value": "0.25"}
+      {"type": "MEMORY", "value": "8192"},
+      {"type": "VCPU", "value": "4"}
     ],
     "mountPoints": [
       {
