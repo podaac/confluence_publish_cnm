@@ -14,12 +14,13 @@ resource "aws_ssm_parameter" "publish_cnm_sns_topic" {
 
 # Job Queue
 resource "aws_batch_job_queue" "jq_publish_cnm" {
-  name     = "${var.prefix}-publish-cnm"
-  state    = "ENABLED"
+  name = "${var.prefix}-publish-cnm"
+  state = "ENABLED"
   priority = 10
-  compute_environments = [
-    data.aws_batch_compute_environment.ce_data.arn
-  ]
+  compute_environment_order {
+    order = 1
+    compute_environment = data.aws_batch_compute_environment.ce_data.arn
+  }
 }
 
 # Job Role
@@ -47,7 +48,7 @@ resource "aws_iam_role_policy_attachment" "batch_job_s3_role_policy" {
 }
 
 resource "aws_iam_policy" "batch_job_s3_policy" {
-  name        = "${var.prefix}-batch-job-s3-policy"
+  name        = "${var.prefix}-batch-job-publish-cnm-s3-policy"
   description = "Amazon Batch job policy for S3 actions"
   policy = jsonencode({
     "Version" : "2012-10-17",
@@ -94,7 +95,7 @@ resource "aws_iam_role_policy_attachment" "batch_job_sns_role_policy" {
 }
 
 resource "aws_iam_policy" "batch_job_sns_policy" {
-  name        = "${var.prefix}-batch-job-sns-policy"
+  name        = "${var.prefix}-batch-job-publish-cnm-sns-policy"
   description = "Amazon Batch job policy to access SNS topics"
   policy = jsonencode({
     "Version" : "2012-10-17",
@@ -116,7 +117,7 @@ resource "aws_iam_role_policy_attachment" "batch_job_ssm_role_policy" {
 }
 
 resource "aws_iam_policy" "batch_job_ssm_policy" {
-  name        = "${var.prefix}-batch-job-ssm-policy"
+  name        = "${var.prefix}-batch-job-publish-cnm-ssm-policy"
   description = "Amazon Batch job policy to access SSM parameters"
   policy = jsonencode({
     "Version" : "2012-10-17",
@@ -129,7 +130,7 @@ resource "aws_iam_policy" "batch_job_ssm_policy" {
           "ssm:GetParameters",
           "ssm:GetParametersByPath"
         ],
-        "Resource" : "arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter/podaac_cnm_topic_arn"
+        "Resource" : "arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter/${var.prefix}-podaac-cnm-topic-arn"
       }
     ]
   })
