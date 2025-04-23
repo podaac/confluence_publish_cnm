@@ -53,6 +53,7 @@ jobs:
       app_version: ${{ steps.version.outputs.APP_VERSION }}
       prefix_env: ${{ steps.version.outputs.PREFIX_ENV }}
       target_env: ${{ steps.version.outputs.TARGET_ENV }}
+      target_env_lowercase: ${{ steps.version.outputs.TARGET_ENV_LOWERCASE }}
     steps:
       # Create a release and set deployment environment
       - uses: getsentry/action-github-app-token@v3
@@ -241,6 +242,7 @@ jobs:
           echo "APP_VERSION=${{ env.APP_VERSION }}" >> $GITHUB_OUTPUT
           echo "PREFIX_ENV=${{ env.PREFIX_ENV }}" >> $GITHUB_OUTPUT
           echo "TARGET_ENV=${{ env.TARGET_ENV }}" >> $GITHUB_OUTPUT
+          echo TARGET_ENV_LOWERCASE=${{ env.TARGET_ENV }} | tr '[:upper:]' '[:lower:]' >> "$GITHUB_OUTPUT"
 
 
   container:
@@ -333,6 +335,7 @@ jobs:
       APP_VERSION: ${{ needs.build.outputs.app_version }}
       PREFIX_ENV: ${{ needs.build.outputs.prefix_env }}
       TARGET_ENV: ${{ needs.build.outputs.target_env }}
+      TARGET_ENV_LOWERCASE: ${{ needs.build.outputs.target_env_lowercase }}
     steps:
 
       # Check out GitHub repo
@@ -366,8 +369,8 @@ jobs:
         working-directory: terraform/
         run: |
           terraform init -reconfigure \
-              -backend-config="bucket=${{ env.PREFIX_ENV }}-tf-state" \
-              -backend-config="key=${{ env.APP_NAME_ENV }}.tfstate" \
+              -backend-config="bucket=podaac-services-${{ env.TARGET_ENV_LOWERCASE }}-terraform" \
+              -backend-config="key=services/confluence/${{ env.APP_NAME_ENV }}.tfstate" \
               -backend-config="region=${AWS_DEFAULT_REGION}"
 
       # Deploy AWS infrastructure
