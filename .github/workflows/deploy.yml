@@ -51,6 +51,7 @@ jobs:
         shell: bash -el {0}
     outputs:
       app_version: ${{ steps.version.outputs.APP_VERSION }}
+      prefix_env: ${{ steps.version.outputs.PREFIX_ENV }}
       target_env: ${{ steps.version.outputs.TARGET_ENV }}
     steps:
       # Create a release and set deployment environment
@@ -92,7 +93,7 @@ jobs:
           echo "APP_VERSION=${{ steps.get-version.outputs.current_version }}" >> $GITHUB_ENV
           echo "TARGET_ENV=${{ github.event.inputs.venue }}" >> $GITHUB_ENV
           target_env=${{ github.event.inputs.venue }}
-          echo "PREFIX_ENV=confluence-$(echo "$target_env" | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+          echo "PREFIX_ENV=svc-confluence-$(echo "$target_env" | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
       - name: Bump pre-alpha version
         # If triggered by push to a non-tracked branch (DEV1)
@@ -104,8 +105,8 @@ jobs:
           new_ver="${{ steps.get-version.outputs.current_version }}+$(git rev-parse --short ${GITHUB_SHA})"
           poetry version $new_ver
           echo "APP_VERSION=$new_ver" >> $GITHUB_ENV
-          echo "TARGET_ENV=DEV1" >> $GITHUB_ENV
-          echo "PREFIX_ENV=confluence-dev1" >> $GITHUB_ENV
+          echo "TARGET_ENV=SIT" >> $GITHUB_ENV
+          echo "PREFIX_ENV=svc-confluence-sit" >> $GITHUB_ENV
 
       - name: Bump alpha version
         # If triggered by push to the develop branch (DEV1)
@@ -116,8 +117,8 @@ jobs:
         run: |
           poetry version prerelease
           echo "APP_VERSION=$(poetry version | awk '{print $2}')" >> $GITHUB_ENV
-          echo "TARGET_ENV=DEV1" >> $GITHUB_ENV
-          echo "PREFIX_ENV=confluence-dev1" >> $GITHUB_ENV
+          echo "TARGET_ENV=SIT" >> $GITHUB_ENV
+          echo "PREFIX_ENV=svc-confluence-sit" >> $GITHUB_ENV
 
       - name: Bump rc version
         # If triggered by push to a release branch (DEV2)
@@ -135,8 +136,8 @@ jobs:
             poetry version ${GITHUB_REF#refs/heads/release/}rc1
           fi
           echo "APP_VERSION=$(poetry version | awk '{print $2}')" >> $GITHUB_ENV
-          echo "TARGET_ENV=DEV2" >> $GITHUB_ENV
-          echo "PREFIX_ENV=confluence-dev2" >> $GITHUB_ENV
+          echo "TARGET_ENV=UAT" >> $GITHUB_ENV
+          echo "PREFIX_ENV=svc-confluence-uat" >> $GITHUB_ENV
 
       - name: Release version
         # If triggered by push to the main branch (OPS)
@@ -152,7 +153,7 @@ jobs:
           poetry version ${CURRENT_VERSION%%rc*}
           echo "APP_VERSION=$(poetry version | awk '{print $2}')" >> $GITHUB_ENV
           echo "TARGET_ENV=OPS" >> $GITHUB_ENV
-          echo "PREFIX_ENV=confluence-OPS" >> $GITHUB_ENV
+          echo "PREFIX_ENV=svc-confluence-ops" >> $GITHUB_ENV
 
       # Validate infrastructure terraform files
       - name: Setup terraform
@@ -238,6 +239,7 @@ jobs:
         id: version
         run: |
           echo "APP_VERSION=${{ env.APP_VERSION }}" >> $GITHUB_OUTPUT
+          echo "PREFIX_ENV=${{ env.PREFIX_ENV }}" >> $GITHUB_OUTPUT
           echo "TARGET_ENV=${{ env.TARGET_ENV }}" >> $GITHUB_OUTPUT
 
 
@@ -248,6 +250,7 @@ jobs:
     needs: build
     env:
       APP_VERSION: ${{ needs.build.outputs.app_version }}
+      PREFIX_ENV: ${{ needs.build.outputs.prefix_env }}
       TARGET_ENV: ${{ needs.build.outputs.target_env }}
     steps:
       # Check out GitHub repo
@@ -304,7 +307,7 @@ jobs:
       - name: Define ECR registry, repository, and image tag names
         run : |
           echo "REGISTRY=${{ steps.login-ecr.outputs.registry }}" >> $GITHUB_ENV
-          echo "REPOSITORY=${PREFIX_ENV}-${APP_NAME_ENV}" >> $GITHUB_ENV
+          echo "REPOSITORY=${{ env.PREFIX_ENV }}-${{ env.APP_NAME_ENV }}" >> $GITHUB_ENV
           image_repository=${{ fromJSON(steps.meta.outputs.json).tags[0] }}
           image_tag=$(echo ${image_repository##*:})
           echo "IMAGE_TAG=${image_tag}" >> $GITHUB_ENV
@@ -325,7 +328,11 @@ jobs:
     name: Deploy module
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
-    needs: container
+    needs: [build, container]
+    env:
+      APP_VERSION: ${{ needs.build.outputs.app_version }}
+      PREFIX_ENV: ${{ needs.build.outputs.prefix_env }}
+      TARGET_ENV: ${{ needs.build.outputs.target_env }}
     steps:
 
       # Check out GitHub repo
@@ -346,11 +353,11 @@ jobs:
       
       - name: Define TF_VAR values
         run: |
-          echo "TF_VAR_app_version=$APP_VERSION" >> $GITHUB_ENV
+          echo "TF_VAR_app_version=${{ env.APP_VERSION }}" >> $GITHUB_ENV
           echo "TF_VAR_collection=${{ secrets['COLLECTION'] }}" >> $GITHUB_ENV
           echo "TF_VAR_data_provider=${{ secrets['PROVIDER'] }}" >> $GITHUB_ENV
-          echo "TF_VAR_environment=$TARGET_ENV" >> $GITHUB_ENV
-          echo "TF_VAR_prefix=$PREFIX_ENV" >> $GITHUB_ENV
+          echo "TF_VAR_environment=${{ env.TARGET_ENV }}" >> $GITHUB_ENV
+          echo "TF_VAR_prefix=${{ env.PREFIX_ENV }}" >> $GITHUB_ENV
           echo "TF_VAR_provider_version=${{ secrets['VERSION'] }}" >> $GITHUB_ENV
           echo "TF_VAR_sns_topic_arn=${{ secrets[format('SNS_TOPIC_{0}', env.TARGET_ENV)] }}" >> $GITHUB_ENV
           echo "TF_IN_AUTOMATION=true" >> $GITHUB_ENV
@@ -359,8 +366,8 @@ jobs:
         working-directory: terraform/
         run: |
           terraform init -reconfigure \
-              -backend-config="bucket=${PREFIX_ENV}-tf-state" \
-              -backend-config="key=${APP_NAME_ENV}.tfstate" \
+              -backend-config="bucket=${{ env.PREFIX_ENV }}-tf-state" \
+              -backend-config="key=${{ env.APP_NAME_ENV }}.tfstate" \
               -backend-config="region=${AWS_DEFAULT_REGION}"
 
       # Deploy AWS infrastructure
