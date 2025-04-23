@@ -25,8 +25,8 @@ on:
             type: choice
             description: Venue to deploy to
             options:
-                - DEV1
-                - DEV2
+                - SIT
+                - UAT
                 - OPS
 
 # Only allow 1 execution of this workflow to be running at any given time per-branch.
@@ -287,31 +287,31 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-      # # AWS ECR repository
-      # - name: Login to AWS ECR
-      #   id: login-ecr
-      #   uses: aws-actions/amazon-ecr-login@v2
-      #   with:
-      #     mask-password: 'true'
-      # - name: Define ECR registry, repository, and image tag names
-      #   run : |
-      #     echo "REGISTRY=${{ steps.login-ecr.outputs.registry }}" >> $GITHUB_ENV
-      #     echo "REPOSITORY=${PREFIX_ENV}-${APP_NAME_ENV}" >> $GITHUB_ENV
-      #     image_repository=${{ fromJSON(steps.meta.outputs.json).tags[0] }}
-      #     image_tag=$(echo ${image_repository##*:})
-      #     echo "IMAGE_TAG=${image_tag}" >> $GITHUB_ENV
+      # AWS ECR repository
+      - name: Login to AWS ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          mask-password: 'true'
+      - name: Define ECR registry, repository, and image tag names
+        run : |
+          echo "REGISTRY=${{ steps.login-ecr.outputs.registry }}" >> $GITHUB_ENV
+          echo "REPOSITORY=${PREFIX_ENV}-${APP_NAME_ENV}" >> $GITHUB_ENV
+          image_repository=${{ fromJSON(steps.meta.outputs.json).tags[0] }}
+          image_tag=$(echo ${image_repository##*:})
+          echo "IMAGE_TAG=${image_tag}" >> $GITHUB_ENV
 
-      # # Create ECR repository (if it does not exist)
-      # - name: Create AWS ECR Repository
-      #   run: deploy/deploy-ecr.sh $REGISTRY $REPOSITORY
+      # Create ECR repository (if it does not exist)
+      - name: Create AWS ECR Repository
+        run: deploy/deploy-ecr.sh $REGISTRY $REPOSITORY
 
-      # # Build and push Docker container image by version tag and to latest tag
-      # - name: Build and Push to AWS ECR
-      #   run: |
-      #     docker tag ${{ fromJSON(steps.meta.outputs.json).tags[0] }} $REGISTRY/$REPOSITORY:$IMAGE_TAG
-      #     docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
-      #     docker tag ${{ fromJSON(steps.meta.outputs.json).tags[0] }} $REGISTRY/$REPOSITORY:latest
-      #     docker push $REGISTRY/$REPOSITORY:latest
+      # Build and push Docker container image by version tag and to latest tag
+      - name: Build and Push to AWS ECR
+        run: |
+          docker tag ${{ fromJSON(steps.meta.outputs.json).tags[0] }} $REGISTRY/$REPOSITORY:$IMAGE_TAG
+          docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
+          docker tag ${{ fromJSON(steps.meta.outputs.json).tags[0] }} $REGISTRY/$REPOSITORY:latest
+          docker push $REGISTRY/$REPOSITORY:latest
 
   deploy:
     name: Deploy module
@@ -323,43 +323,39 @@ jobs:
       # Check out GitHub repo
       - uses: actions/checkout@v4
 
-      # # Configure credentials 
-      # - name: Configure AWS credentials
-      #   uses: aws-actions/configure-aws-credentials@v4
-      #   with:
-      #     aws-access-key-id: ${{ secrets[format('AWS_ACCESS_KEY_ID_{0}', env.TARGET_ENV)] }}
-      #     aws-secret-access-key: ${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.TARGET_ENV)] }}
-      #     aws-region: us-west-2
-      #     mask-aws-account-id: true
+      # Configure credentials 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets[format('AWS_ACCESS_KEY_ID_{0}', env.TARGET_ENV)] }}
+          aws-secret-access-key: ${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.TARGET_ENV)] }}
+          aws-region: us-west-2
+          mask-aws-account-id: true
 
-      # # Set up Terraform
-      # - name: Setup Terraform
-      #   uses: hashicorp/setup-terraform@v3
+      # Set up Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
       
-      # - name: Define TF_VAR values
-      #   run: |
-      #     echo "TF_VAR_app_version=$APP_VERSION" >> $GITHUB_ENV
-      #     echo "TF_VAR_collection=${{ secrets['COLLECTION'] }}" >> $GITHUB_ENV
-      #     echo "TF_VAR_data_provider=${{ secrets['PROVIDER'] }}" >> $GITHUB_ENV
-      #     echo "TF_VAR_environment=$TARGET_ENV" >> $GITHUB_ENV
-      #     echo "TF_VAR_prefix=$PREFIX_ENV" >> $GITHUB_ENV
-      #     echo "TF_VAR_provider_version=${{ secrets['VERSION'] }}" >> $GITHUB_ENV
-      #     echo "TF_VAR_sns_topic_arn=${{ secrets[format('SNS_TOPIC_{0}', env.TARGET_ENV)] }}" >> $GITHUB_ENV
-      #     echo "TF_IN_AUTOMATION=true" >> $GITHUB_ENV
+      - name: Define TF_VAR values
+        run: |
+          echo "TF_VAR_app_version=$APP_VERSION" >> $GITHUB_ENV
+          echo "TF_VAR_collection=${{ secrets['COLLECTION'] }}" >> $GITHUB_ENV
+          echo "TF_VAR_data_provider=${{ secrets['PROVIDER'] }}" >> $GITHUB_ENV
+          echo "TF_VAR_environment=$TARGET_ENV" >> $GITHUB_ENV
+          echo "TF_VAR_prefix=$PREFIX_ENV" >> $GITHUB_ENV
+          echo "TF_VAR_provider_version=${{ secrets['VERSION'] }}" >> $GITHUB_ENV
+          echo "TF_VAR_sns_topic_arn=${{ secrets[format('SNS_TOPIC_{0}', env.TARGET_ENV)] }}" >> $GITHUB_ENV
+          echo "TF_IN_AUTOMATION=true" >> $GITHUB_ENV
 
-      # - name: Initialize Terraform
-      #   working-directory: terraform/
-      #   run: |
-      #     terraform init -reconfigure \
-      #         -backend-config="bucket=${PREFIX_ENV}-tf-state" \
-      #         -backend-config="key=${APP_NAME_ENV}.tfstate" \
-      #         -backend-config="region=${AWS_DEFAULT_REGION}"
+      - name: Initialize Terraform
+        working-directory: terraform/
+        run: |
+          terraform init -reconfigure \
+              -backend-config="bucket=${PREFIX_ENV}-tf-state" \
+              -backend-config="key=${APP_NAME_ENV}.tfstate" \
+              -backend-config="region=${AWS_DEFAULT_REGION}"
 
-      # - name: Validate Terraform
-      #   working-directory: terraform/
-      #   run: terraform validate -no-color
-
-      # # Deploy AWS infrastructure
-      # - name: Deploy Terraform
-      #   working-directory: terraform/
-      #   run: terraform apply -auto-approve
+      # Deploy AWS infrastructure
+      - name: Deploy Terraform
+        working-directory: terraform/
+        run: terraform apply -auto-approve
