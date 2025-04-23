@@ -9,6 +9,7 @@ continent pair.
 import argparse
 import datetime
 import hashlib
+import json
 import logging
 import os
 import pathlib
@@ -85,7 +86,12 @@ def get_granules_dict(bucket, bucket_path):
     """Return a dictionary organized by continent of SoS granules."""
     paginator = S3.get_paginator("list_objects_v2")
     pages = paginator.paginate(Bucket=bucket, Prefix=bucket_path)
-    granule_list = [obj["Key"].split("/")[-1] for page in pages for obj in page["Contents"]]
+    granule_list = []
+    for page in pages:
+        for obj in page["Contents"]:
+            obj_name = obj["Key"].split("/")[-1]
+            if "unconstrained" not in obj_name and "constrained" not in obj_name:
+                granule_list.append(obj_name)
 
     continents = list(set([ granule.split('_')[0] for granule in granule_list ]))
     granule_dict = {}
@@ -145,10 +151,10 @@ def rename_s3_files(priors_file, results_file, bucket, bucket_path):
     S3.upload_file(results_file, bucket, f"{bucket_path}/{updated_results}")
     logging.info("Uploaded: s3://%s/%s/%s", bucket, bucket_path, updated_results)
 
-    S3.delete_object(Bucket=bucket, Key=f"{bucket_path}/{priors_file.name}")
-    logging.info("Deleted: s3://%s/%s/%s", bucket, bucket_path, priors_file.name)
-    S3.delete_object(Bucket=bucket, Key=f"{bucket_path}/{results_file.name}")
-    logging.info("Deleted: s3://%s/%s/%s", bucket, bucket_path, results_file.name)
+    # S3.delete_object(Bucket=bucket, Key=f"{bucket_path}/{priors_file.name}")
+    # logging.info("Deleted: s3://%s/%s/%s", bucket, bucket_path, priors_file.name)
+    # S3.delete_object(Bucket=bucket, Key=f"{bucket_path}/{results_file.name}")
+    # logging.info("Deleted: s3://%s/%s/%s", bucket, bucket_path, results_file.name)
 
     return updated_priors, updated_results
 
