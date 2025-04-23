@@ -1,13 +1,20 @@
-# Stage 0 - Create from Python3.12 image
-FROM python:3.12-slim-bookworm AS stage0
+FROM python:3.12-slim-bookworm
 
-# Stage 1 - Copy and execute module
-FROM stage0 AS stage1
-COPY requirements.txt /app/requirements.txt
-RUN /usr/local/bin/python -m venv /app/env \
-        && /app/env/bin/pip install -r /app/requirements.txt
+# install OS dependencies
+RUN apt update && apt install -y curl
+
+# install poetry
+RUN curl -sSL https://install.python-poetry.org | python3 -
+RUN ln -s ~/.local/bin/poetry /bin/poetry
+
+# set up project files
+WORKDIR /app
+COPY poetry.lock pyproject.toml README.md ./
 COPY ./publish_cnm.py /app/publish_cnm.py
 
-LABEL version="1.0" \
-        description="Containerized publish_cnm module."
-ENTRYPOINT ["/app/env/bin/python3", "/app/publish_cnm.py"]
+# install dependencies
+RUN poetry lock
+RUN poetry install
+
+# run command
+ENTRYPOINT ["poetry", "run", "publish_cnm"]
