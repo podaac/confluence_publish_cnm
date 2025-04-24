@@ -59,6 +59,7 @@ def main():
 
         message = create_message(granule_files)
         logging.info("Created CNM for priors/results granule.")
+        logging.info("Message: %s", message)
 
         publish_cnm(message, prefix)
 
@@ -192,7 +193,7 @@ def create_message(granule_files):
         "product": {
             "name": identifier,
             "files": granule_files,
-            "dataVersion": str(int(identifier.split("_")[5]))
+            "dataVersion": VERSION
         }
     }
     return message

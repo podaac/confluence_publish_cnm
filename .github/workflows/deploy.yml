@@ -358,6 +358,7 @@ jobs:
         run: |
           echo "TF_VAR_app_version=${{ env.APP_VERSION }}" >> $GITHUB_ENV
           echo "TF_VAR_collection=${{ secrets['COLLECTION'] }}" >> $GITHUB_ENV
+          echo "TF_VAR_cross_account=${{ secrets[format('CROSS_ACCOUNT_{0}', env.TARGET_ENV)] }}"
           echo "TF_VAR_data_provider=${{ secrets['PROVIDER'] }}" >> $GITHUB_ENV
           echo "TF_VAR_environment=${{ env.TARGET_ENV }}" >> $GITHUB_ENV
           echo "TF_VAR_prefix=${{ env.PREFIX_ENV }}" >> $GITHUB_ENV

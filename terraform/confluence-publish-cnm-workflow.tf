@@ -23,6 +23,31 @@ resource "aws_batch_job_queue" "jq_publish_cnm" {
   }
 }
 
+# S3 bucket policy
+resource "aws_iam_policy" "s3_sos_bucket_policy" {
+  name = "${var.prefix}-cnm-publish-sos-bucket-policy"
+  policy = jsonencode({
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+          "Sid": "ListBucketGetObject",
+          "Effect": "Allow",
+          "Principal": {
+              "AWS": "arn:aws:iam::${var.cross_account}:root"
+          },
+          "Action": [
+              "s3:ListBucket",
+              "s3:GetObject",
+              "s3:GetObjectAttributes",
+          ],
+          "Resource": [
+              "arn:aws:s3:::${prefix}-sos"
+          ]
+        }
+    ]
+  })
+}
+
 # Job Role
 resource "aws_iam_role" "batch_job_role" {
   name        = "${var.prefix}-batch-job-role-publish-cnm"

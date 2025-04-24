@@ -21,10 +21,15 @@ variable "collection" {
   default     = "SWOT_L4_DAWG_SOS_DISCHARGE"
 }
 
+variable "cross_account" {
+  type        = string
+  description = "Cross account to allow SoS bucket read"
+}
+
 variable "data_provider" {
   type        = string
   description = "Data provider publishing granules"
-  default     = "NASA/JPL/PO.DAAC"
+  default     = "swot-confluence"
 }
 
 
@@ -46,7 +51,7 @@ variable "prefix" {
 variable "provider_version" {
   type        = string
   description = "Version of data provider"
-  default     = "1.4"
+  default     = "1.0"
 }
 
 variable "sns_topic_arn" {
