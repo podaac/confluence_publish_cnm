@@ -14,41 +14,48 @@ resource "aws_ssm_parameter" "publish_cnm_sns_topic" {
 
 # Job Queue
 resource "aws_batch_job_queue" "jq_publish_cnm" {
-  name = "${var.prefix}-publish-cnm"
-  state = "ENABLED"
+  name     = "${var.prefix}-publish-cnm"
+  state    = "ENABLED"
   priority = 10
   compute_environment_order {
-    order = 1
+    order               = 1
     compute_environment = data.aws_batch_compute_environment.ce_data.arn
   }
 }
 
 # S3 bucket policy
 resource "aws_s3_bucket_policy" "allow_cross_account_access" {
-  bucket = data.aws_s3_bucket.aws_s3_bucket_sos
-  policy = aws_iam_policy.s3_sos_bucket_policy
-}
-
-resource "aws_iam_policy" "s3_sos_bucket_policy" {
-  name = "${var.prefix}-cnm-publish-sos-bucket-policy"
+  bucket = data.aws_s3_bucket.aws_s3_bucket_sos.id
   policy = jsonencode({
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-          "Sid": "ListBucketGetObject",
-          "Effect": "Allow",
-          "Principal": {
-              "AWS": "arn:aws:iam::${var.cross_account}:root"
-          },
-          "Action": [
-              "s3:ListBucket",
-              "s3:GetObject",
-              "s3:GetObjectAttributes",
-          ],
-          "Resource": [
-              "${data.aws_s3_bucket.aws_s3_bucket_sos.arn}"
-          ]
-        }
+    "Version" : "2012-10-17",
+    "Statement" : [
+      {
+        "Sid" : "ListBucket",
+        "Effect" : "Allow",
+        "Principal" : {
+          "AWS" : "arn:aws:iam::${var.cross_account}:root"
+        },
+        "Action" : [
+          "s3:ListBucket",
+        ],
+        "Resource" : [
+          "${data.aws_s3_bucket.aws_s3_bucket_sos.arn}"
+        ]
+      },
+      {
+        "Sid" : "GetObject",
+        "Effect" : "Allow",
+        "Principal" : {
+          "AWS" : "arn:aws:iam::${var.cross_account}:root"
+        },
+        "Action" : [
+          "s3:GetObject",
+          "s3:GetObjectAttributes",
+        ],
+        "Resource" : [
+          "${data.aws_s3_bucket.aws_s3_bucket_sos.arn}/*"
+        ]
+      }
     ]
   })
 }
