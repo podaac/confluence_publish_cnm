@@ -24,6 +24,11 @@ resource "aws_batch_job_queue" "jq_publish_cnm" {
 }
 
 # S3 bucket policy
+resource "aws_s3_bucket_policy" "allow_cross_account_access" {
+  bucket = data.aws_s3_bucket.aws_s3_bucket_sos
+  policy = aws_iam_policy.s3_sos_bucket_policy
+}
+
 resource "aws_iam_policy" "s3_sos_bucket_policy" {
   name = "${var.prefix}-cnm-publish-sos-bucket-policy"
   policy = jsonencode({
@@ -41,7 +46,7 @@ resource "aws_iam_policy" "s3_sos_bucket_policy" {
               "s3:GetObjectAttributes",
           ],
           "Resource": [
-              "arn:aws:s3:::${prefix}-sos"
+              "${data.aws_s3_bucket.aws_s3_bucket_sos.arn}"
           ]
         }
     ]
