@@ -202,7 +202,7 @@ def publish_cnm(message, prefix):
     topic_arn = SSM.get_parameter(Name=f"{prefix}-podaac-cnm-topic-arn", WithDecryption=True)["Parameter"]["Value"]
     SNS.publish(TopicArn=topic_arn, Message=json.dumps(message),
     )
-    print(f"{message['identifier']} message published to SNS Topic: {topic_arn}")
+    logging.info(f"{message['identifier']} message published to SNS Topic: {topic_arn}")
 
 if __name__ == "__main__":
     main()
