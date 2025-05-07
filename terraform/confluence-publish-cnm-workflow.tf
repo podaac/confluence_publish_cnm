@@ -13,13 +13,13 @@ resource "aws_ssm_parameter" "publish_cnm_sns_topic" {
 }
 
 resource "aws_ssm_parameter" "aws_ssm_parameter_podaac_key" {
-  name   = "podaac_key"
+  name   = "${var.prefix}-podaac-key"
   type   = "SecureString"
   value  = var.podaac_key
 }
 
 resource "aws_ssm_parameter" "aws_ssm_parameter_podaac_secret" {
-  name   = "podaac_secret"
+  name   = "${var.prefix}-podaac-secret"
   type   = "SecureString"
   value  = var.podaac_secret
 }
@@ -181,8 +181,8 @@ resource "aws_iam_policy" "batch_job_ssm_policy" {
         ],
         "Resource" : [ 
           "arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter/${var.prefix}-podaac-cnm-topic-arn",
-          "arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter/podaac_key",
-          "arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter/podaac_secret"
+          "arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter/${var.prefix}-podaac-key",
+          "arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter${var.prefix}-/podaac-secret"
         ]
       }
     ]

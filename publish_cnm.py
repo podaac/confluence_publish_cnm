@@ -56,7 +56,7 @@ def main():
     for continent, granules in granules_dict.items():
         logging.info("Collecting granule data and publishing message for %s.", continent.upper())
 
-        granule_files = retrieve_metadata(granules["priors"], granules["results"], podaac_bucket, bucket_path)
+        granule_files = retrieve_metadata(granules["priors"], granules["results"], podaac_bucket, bucket_path, prefix)
         logging.info("Located metadata for priors/results granule.")
 
         message = create_message(granule_files)
@@ -123,9 +123,9 @@ def locate_efs_granules(granules_dict):
             logging.error("Could not locate granule pair: %s and %s", priors_file, results_file)
             raise FileNotFoundError(f"Could not locate granule pair: {priors_file} and {results_file}")
 
-def retrieve_metadata(priors_file, results_file, podaac_bucket, bucket_path):
+def retrieve_metadata(priors_file, results_file, podaac_bucket, bucket_path, prefix):
     """Retrieve metadata for each file in the granule dictionary."""
-    priors_s3, results_s3 = rename_s3_files(priors_file, results_file, podaac_bucket, bucket_path)
+    priors_s3, results_s3 = rename_s3_files(priors_file, results_file, podaac_bucket, bucket_path, prefix)
     return [
         {
             "name": priors_s3,
@@ -145,10 +145,10 @@ def retrieve_metadata(priors_file, results_file, podaac_bucket, bucket_path):
         }
     ]
 
-def rename_s3_files(priors_file, results_file, podaac_bucket, bucket_path):
+def rename_s3_files(priors_file, results_file, podaac_bucket, bucket_path, prefix):
     """Rename granules to include run type, version, and run time."""
 
-    creds = get_podaac_creds()
+    creds = get_podaac_creds(prefix)
     s3_podaac = boto3.client(
         "s3",
         aws_access_key_id=creds["access_key"],
@@ -167,13 +167,13 @@ def rename_s3_files(priors_file, results_file, podaac_bucket, bucket_path):
 
     return updated_priors, updated_results
 
-def get_podaac_creds():
+def get_podaac_creds(prefix):
     """Return PO.DAAC S3 credentials stored in SSM Parameter Store."""
 
     creds = {}
     try:
-        creds["access_key"] = SSM.get_parameter(Name="podaac_key", WithDecryption=True)["Parameter"]["Value"]
-        creds["secret"] = SSM.get_parameter(Name="podaac_secret", WithDecryption=True)["Parameter"]["Value"]
+        creds["access_key"] = SSM.get_parameter(Name=f"{prefix}-podaac-key", WithDecryption=True)["Parameter"]["Value"]
+        creds["secret"] = SSM.get_parameter(Name=f"{prefix}-podaac-secret", WithDecryption=True)["Parameter"]["Value"]
     except botocore.exceptions.ClientError as e:
         raise e
     return creds
