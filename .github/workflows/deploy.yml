@@ -361,6 +361,8 @@ jobs:
           echo "TF_VAR_cross_account=${{ secrets[format('CROSS_ACCOUNT_{0}', env.TARGET_ENV)] }}" >> $GITHUB_ENV
           echo "TF_VAR_data_provider=${{ secrets['PROVIDER'] }}" >> $GITHUB_ENV
           echo "TF_VAR_environment=${{ env.TARGET_ENV }}" >> $GITHUB_ENV
+          echo "TF_VAR_podaac_key=${{ secrets['PODAAC_KEY'] }}" >> $GITHUB_ENV
+          echo "TF_VAR_podaac_secret=${{ secrets['PODAAC_SECRET'] }}" >> $GITHUB_ENV
           echo "TF_VAR_prefix=${{ env.PREFIX_ENV }}" >> $GITHUB_ENV
           echo "TF_VAR_provider_version=${{ secrets['VERSION'] }}" >> $GITHUB_ENV
           echo "TF_VAR_sns_topic_arn=${{ secrets[format('SNS_TOPIC_{0}', env.TARGET_ENV)] }}" >> $GITHUB_ENV
