@@ -182,7 +182,7 @@ resource "aws_iam_policy" "batch_job_ssm_policy" {
         "Resource" : [ 
           "arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter/${var.prefix}-podaac-cnm-topic-arn",
           "arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter/${var.prefix}-podaac-key",
-          "arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter${var.prefix}-/podaac-secret"
+          "arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter/${var.prefix}-podaac-secret"
         ]
       }
     ]
