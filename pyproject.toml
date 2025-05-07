@@ -1,6 +1,6 @@
 [project]
 name = "confluence-publish-cnm"
-version = "1.0.1a15"
+version = "1.0.1a16"
 description = "Publishes CNM to ingest SoS granules"
 authors = [
     {name = "Nikki",email = "17799906+nikki-t@users.noreply.github.com"}
