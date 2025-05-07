@@ -45,6 +45,8 @@ def main():
     logging.info("S3 bucket path to granules: %s", bucket_path)
     prefix = args.prefix
     logging.info("Venue prefix: %s", prefix)
+    podaac_bucket = args.podaacbucket
+    logging.info("PO.DAAC S3 bucket: %s", podaac_bucket)
 
     granules_dict = get_granules_dict(bucket, bucket_path)
     logging.info("Retrieved granules from S3.")
@@ -54,7 +56,7 @@ def main():
     for continent, granules in granules_dict.items():
         logging.info("Collecting granule data and publishing message for %s.", continent.upper())
 
-        granule_files = retrieve_metadata(granules["priors"], granules["results"], bucket, bucket_path)
+        granule_files = retrieve_metadata(granules["priors"], granules["results"], podaac_bucket, bucket_path)
         logging.info("Located metadata for priors/results granule.")
 
         message = create_message(granule_files)
@@ -72,7 +74,7 @@ def create_args():
     arg_parser.add_argument("-b",
                             "--bucket",
                             type=str,
-                            help="Full path to SoS granules in S3, e.g. confluence-ops-sos")
+                            help="S3 bucket that contains SoS granules, e.g. confluence-ops-sos")
     arg_parser.add_argument("-p",
                             "--bucketpath",
                             type=str,
@@ -81,6 +83,10 @@ def create_args():
                             "--prefix",
                             type=str,
                             help="Prefix for venue resources, e.g. svc-confluence-sit")
+    arg_parser.add_argument("-s",
+                            "--podaacbucket",
+                            type=str,
+                            help="S3 bucket to upload granules for ingestion to, e.g. podaac-dev-swot-sos")
     return arg_parser
 
 def get_granules_dict(bucket, bucket_path):
@@ -117,14 +123,14 @@ def locate_efs_granules(granules_dict):
             logging.error("Could not locate granule pair: %s and %s", priors_file, results_file)
             raise FileNotFoundError(f"Could not locate granule pair: {priors_file} and {results_file}")
 
-def retrieve_metadata(priors_file, results_file, bucket, bucket_path):
+def retrieve_metadata(priors_file, results_file, podaac_bucket, bucket_path):
     """Retrieve metadata for each file in the granule dictionary."""
-    priors_s3, results_s3 = rename_s3_files(priors_file, results_file, bucket, bucket_path)
+    priors_s3, results_s3 = rename_s3_files(priors_file, results_file, podaac_bucket, bucket_path)
     return [
         {
             "name": priors_s3,
             "type": "data",
-            "uri": f"s3://{bucket}/{bucket_path}/{priors_s3}",
+            "uri": f"s3://{podaac_bucket}/{COLLECTION}/{priors_s3}",
             "size": os.stat(priors_file).st_size,
             "checksum": get_checksum(priors_file),
             "checksumType": "md5"
@@ -132,32 +138,45 @@ def retrieve_metadata(priors_file, results_file, bucket, bucket_path):
         {
             "name": results_s3,
             "type": "data",
-            "uri": f"s3://{bucket}/{bucket_path}/{results_s3}",
+            "uri": f"s3://{podaac_bucket}/{COLLECTION}/{results_s3}",
             "size": os.stat(results_file).st_size,
             "checksum": get_checksum(results_file),
             "checksumType": "md5"
         }
     ]
 
-def rename_s3_files(priors_file, results_file, bucket, bucket_path):
+def rename_s3_files(priors_file, results_file, podaac_bucket, bucket_path):
     """Rename granules to include run type, version, and run time."""
+
+    creds = get_podaac_creds()
+    s3_podaac = boto3.client(
+        "s3",
+        aws_access_key_id=creds["access_key"],
+        aws_secret_access_key=creds["secret"]
+    )
 
     run_type = bucket_path.split("/")[0]
     version = bucket_path.split("/")[-1]
     run_time = get_runtime(priors_file)
     updated_priors = f"{priors_file.name.split('_priors.nc')[0]}_{run_type}_{version}_{run_time}_priors.nc"
     updated_results = f"{results_file.name.split('_results.nc')[0]}_{run_type}_{version}_{run_time}_results.nc"
-    S3.upload_file(priors_file, bucket, f"{bucket_path}/{updated_priors}")
-    logging.info("Uploaded: s3://%s/%s/%s", bucket, bucket_path, updated_priors)
-    S3.upload_file(results_file, bucket, f"{bucket_path}/{updated_results}")
-    logging.info("Uploaded: s3://%s/%s/%s", bucket, bucket_path, updated_results)
-
-    # S3.delete_object(Bucket=bucket, Key=f"{bucket_path}/{priors_file.name}")
-    # logging.info("Deleted: s3://%s/%s/%s", bucket, bucket_path, priors_file.name)
-    # S3.delete_object(Bucket=bucket, Key=f"{bucket_path}/{results_file.name}")
-    # logging.info("Deleted: s3://%s/%s/%s", bucket, bucket_path, results_file.name)
+    s3_podaac.upload_file(priors_file, podaac_bucket, f"{COLLECTION}/{updated_priors}")
+    logging.info("Uploaded: s3://%s/%s/%s", podaac_bucket, COLLECTION, updated_priors)
+    s3_podaac.upload_file(results_file, podaac_bucket, f"{COLLECTION}/{updated_results}")
+    logging.info("Uploaded: s3://%s/%s/%s", podaac_bucket, COLLECTION, updated_results)
 
     return updated_priors, updated_results
+
+def get_podaac_creds():
+    """Return PO.DAAC S3 credentials stored in SSM Parameter Store."""
+
+    creds = {}
+    try:
+        creds["access_key"] = SSM.get_parameter(Name="podaac_key", WithDecryption=True)["Parameter"]["Value"]
+        creds["secret"] = SSM.get_parameter(Name="podaac_secret", WithDecryption=True)["Parameter"]["Value"]
+    except botocore.exceptions.ClientError as e:
+        raise e
+    return creds
 
 def get_runtime(file_name):
     """Get runtime timestamp from global attributes of SoS file."""

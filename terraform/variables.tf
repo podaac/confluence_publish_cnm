@@ -43,6 +43,18 @@ variable "environment" {
   description = "The environment in which to deploy to"
 }
 
+variable "podaac_key" {
+  type        = string
+  default     = "None"
+  description = "AWS access key that allows uploading of SoS for ingestion"
+}
+
+variable "podaac_secret" {
+  type        = string
+  default     = "None"
+  description = "AWS secret key that allows uploading of SoS for ingestion"
+}
+
 variable "prefix" {
   type        = string
   description = "Prefix to add to all AWS resources as a unique identifier"

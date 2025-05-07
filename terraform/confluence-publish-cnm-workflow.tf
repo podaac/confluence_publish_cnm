@@ -4,12 +4,24 @@ resource "aws_cloudwatch_log_group" "cw_log_group_publish_cnm" {
   retention_in_days = 0
 }
 
-# SSM parameter
+# SSM parameters
 resource "aws_ssm_parameter" "publish_cnm_sns_topic" {
   name        = "${var.prefix}-podaac-cnm-topic-arn"
   description = "Cumulus SNS topic for granule ingestion"
   type        = "SecureString"
   value       = var.sns_topic_arn
+}
+
+resource "aws_ssm_parameter" "aws_ssm_parameter_podaac_key" {
+  name   = "podaac_key"
+  type   = "SecureString"
+  value  = var.podaac_key
+}
+
+resource "aws_ssm_parameter" "aws_ssm_parameter_podaac_secret" {
+  name   = "podaac_secret"
+  type   = "SecureString"
+  value  = var.podaac_secret
 }
 
 # Job Queue
