@@ -52,7 +52,7 @@ def main():
 
     granules_dict = get_granules_dict(bucket, bucket_path)
     logging.info("Retrieved granules from S3.")
-    locate_efs_granules(granules_dict)
+    locate_efs_granules(granules_dict, bucket, bucket_path)
     logging.info("Located matching granules on EFS.")
 
     for continent, granules in granules_dict.items():
@@ -67,6 +67,8 @@ def main():
 
         if not test:
             publish_cnm(message, prefix)
+        else:
+            logging.info("Test run so CNM message was not published.")
 
     end = datetime.datetime.now(datetime.timezone.utc)
     logging.info("Execution time: %s", end - start)
@@ -118,17 +120,36 @@ def get_granules_dict(bucket, bucket_path):
                 granule_dict[continent]["results"] = granule
     return granule_dict
 
-def locate_efs_granules(granules_dict):
+def locate_efs_granules(granules_dict, bucket, bucket_path):
     """Locate SoS granules on EFS and update granule dictionary."""
     for continent, granules in granules_dict.items():
         priors_file = DATA_PRIORS.joinpath(granules["priors"])
         results_file = DATA_RESULTS.joinpath(granules["results"])
-        if priors_file.exists() and results_file.exists():
-            granules_dict[continent]["priors"] = priors_file
-            granules_dict[continent]["results"] = results_file
-        else:
-            logging.error("Could not locate granule pair: %s and %s", priors_file, results_file)
-            raise FileNotFoundError(f"Could not locate granule pair: {priors_file} and {results_file}")
+        if not priors_file.exists() or not results_file.exists():
+            logging.error("Could not locate granule pair: %s and %s. Attempting to download from S3...", priors_file, results_file)
+            download_from_s3(priors_file, results_file, bucket, bucket_path)
+            if not priors_file.exists() or not results_file.exists():
+                raise FileNotFoundError(f"Could not locate granule pair: {priors_file} and {results_file}")
+        granules_dict[continent]["priors"] = priors_file
+        granules_dict[continent]["results"] = results_file
+
+def download_from_s3(priors_file, results_file, bucket, bucket_path):
+    """Download priors and/or results file from S3 if needed."""
+
+    if not priors_file.exists():
+        S3.download_file(
+            bucket,
+            f"{bucket_path}/{priors_file.name}",
+            priors_file
+        )
+        logging.error("Downloaded from S3: %s.", priors_file)
+    if not results_file.exists():
+        S3.download_file(
+            bucket,
+            f"{bucket_path}/{results_file.name}",
+            results_file
+        )
+        logging.error("Downloaded from S3: %s.", results_file)
 
 def retrieve_metadata(priors_file, results_file, podaac_bucket, bucket_path, prefix):
     """Retrieve metadata for each file in the granule dictionary."""
