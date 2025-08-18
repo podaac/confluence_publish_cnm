@@ -47,6 +47,8 @@ def main():
     logging.info("Venue prefix: %s", prefix)
     podaac_bucket = args.podaacbucket
     logging.info("PO.DAAC S3 bucket: %s", podaac_bucket)
+    test = args.test
+    logging.info("Test run: %s", test)
 
     granules_dict = get_granules_dict(bucket, bucket_path)
     logging.info("Retrieved granules from S3.")
@@ -63,7 +65,8 @@ def main():
         logging.info("Created CNM for priors/results granule.")
         logging.info("Message: %s", message)
 
-        publish_cnm(message, prefix)
+        if not test:
+            publish_cnm(message, prefix)
 
     end = datetime.datetime.now(datetime.timezone.utc)
     logging.info("Execution time: %s", end - start)
@@ -87,6 +90,10 @@ def create_args():
                             "--podaacbucket",
                             type=str,
                             help="S3 bucket to upload granules for ingestion to, e.g. podaac-dev-swot-sos")
+    arg_parser.add_argument("-t",
+                            "--test",
+                            action="store_true",
+                            help="Indicates this is a test run and granules should not be ingested")
     return arg_parser
 
 def get_granules_dict(bucket, bucket_path):
@@ -148,22 +155,22 @@ def retrieve_metadata(priors_file, results_file, podaac_bucket, bucket_path, pre
 def rename_s3_files(priors_file, results_file, podaac_bucket, bucket_path, prefix):
     """Rename granules to include run type, version, and run time."""
 
-    creds = get_podaac_creds(prefix)
-    s3_podaac = boto3.client(
-        "s3",
-        aws_access_key_id=creds["access_key"],
-        aws_secret_access_key=creds["secret"]
-    )
+    # creds = get_podaac_creds(prefix)
+    # s3_podaac = boto3.client(
+    #     "s3",
+    #     aws_access_key_id=creds["access_key"],
+    #     aws_secret_access_key=creds["secret"]
+    # )
 
     run_type = bucket_path.split("/")[0]
     version = bucket_path.split("/")[-1]
     run_time = get_runtime(priors_file)
     updated_priors = f"{priors_file.name.split('_priors.nc')[0]}_{run_type}_{version}_{run_time}_priors.nc"
     updated_results = f"{results_file.name.split('_results.nc')[0]}_{run_type}_{version}_{run_time}_results.nc"
-    s3_podaac.upload_file(priors_file, podaac_bucket, f"{COLLECTION}/{updated_priors}")
-    logging.info("Uploaded: s3://%s/%s/%s", podaac_bucket, COLLECTION, updated_priors)
-    s3_podaac.upload_file(results_file, podaac_bucket, f"{COLLECTION}/{updated_results}")
-    logging.info("Uploaded: s3://%s/%s/%s", podaac_bucket, COLLECTION, updated_results)
+    # s3_podaac.upload_file(priors_file, podaac_bucket, f"{COLLECTION}/{updated_priors}")
+    # logging.info("Uploaded: s3://%s/%s/%s", podaac_bucket, COLLECTION, updated_priors)
+    # s3_podaac.upload_file(results_file, podaac_bucket, f"{COLLECTION}/{updated_results}")
+    # logging.info("Uploaded: s3://%s/%s/%s", podaac_bucket, COLLECTION, updated_results)
 
     return updated_priors, updated_results
 
